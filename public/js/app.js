@@ -29,16 +29,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Các hàm xử lý dữ liệu và hiển thị
-    async function fetchData(url) {
-        try {
-            const response = await fetch(`http://localhost:8000${url}`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
-        } catch (error) {
-            console.error(`Lỗi khi tải dữ liệu từ ${url}:`, error);
-            return null;
-        }
+async function fetchData(url) {
+    try {
+        const response = await fetch(url); // Đã xóa bỏ localhost:8000
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error(`Lỗi khi tải dữ liệu từ ${url}:`, error);
+        return null;
     }
+}
     
     async function fetchProducts(page = 1, category = 'all') {
         try {

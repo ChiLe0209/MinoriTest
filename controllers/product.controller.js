@@ -1,104 +1,114 @@
-const Product = require('../models/product.model'); // Import trực tiếp Mongoose Model
+// controllers/product.controller.js (Phiên bản có gắn log gỡ lỗi)
+const Product = require('../models/product.model');
 
-// Lấy sản phẩm bằng ID
+async function getAllProducts(req, res) {
+    console.log('[DEBUG] API /api/products called.'); // Log khi API được gọi
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 8;
+        const category = req.query.category;
+
+        console.log('[DEBUG] Received query params:', req.query); // Log các tham số nhận được
+
+        const query = {};
+        if (category && category !== 'all') {
+            console.log('[DEBUG] Filtering by category slug:', category); // Log category đang được lọc
+            query.danh_muc = category;
+        }
+
+        console.log('[DEBUG] Final Mongoose query object:', JSON.stringify(query)); // Log câu query cuối cùng
+
+        const skip = (page - 1) * limit;
+
+        const products = await Product.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalProducts = await Product.countDocuments(query);
+        const totalPages = Math.ceil(totalProducts / limit);
+
+        res.status(200).json({
+            products,
+            currentPage: page,
+            totalPages,
+        });
+    } catch (error) {
+        console.error('[ERROR] Server error when getting products:', error);
+        res.status(500).json({ message: 'Lỗi server khi lấy sản phẩm', error: error.message });
+    }
+}
+
+// Các hàm khác giữ nguyên không đổi
 async function getProductById(req, res) {
     try {
-        const product = await Product.findById(req.params.id); // Gọi trực tiếp
+        const product = await Product.findById(req.params.id);
         if (!product) {
             return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
         }
         res.status(200).json(product);
     } catch (error) {
-        console.error('❌ LỖI SERVER KHI LẤY SẢN PHẨM BẰNG ID:', error);
-        res.status(500).json({ message: 'Lỗi server khi lấy sản phẩm', error: error.message });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 }
 
-// Lấy các danh mục duy nhất
-async function getUniqueCategories(req, res) {
-    try {
-        const categories = await Product.distinct('danh_muc'); // Gọi trực tiếp
-        res.status(200).json(categories);
-    } catch (error) {
-        console.error('❌ LỖI SERVER KHI LẤY DANH MỤC:', error);
-        res.status(500).json({ message: 'Lỗi khi lấy danh mục', error: error.message });
-    }
-} 
-
-// Lấy tất cả sản phẩm (phân trang)
-async function getAllProducts(req, res) {
-    try {
-        const { page, limit, category } = req.query;
-        const paginatedData = await Product.findAll(page, limit, category); // Gọi hàm static đã định nghĩa
-        res.status(200).json(paginatedData);
-    } catch (error) {
-        console.error('❌ LỖI SERVER KHI LẤY TẤT CẢ SẢN PHẨM:', error);
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách sản phẩm', error: error.message });
-    }
-}
-
-// Tạo sản phẩm mới
 async function createProduct(req, res) {
     try {
-        const newProduct = await Product.create(req.body); // Gọi trực tiếp
+        const newProduct = await Product.create(req.body);
         res.status(201).json(newProduct);
     } catch (error) {
-        console.error('❌ LỖI KHI TẠO SẢN PHẨM:', error);
         res.status(500).json({ message: 'Lỗi khi tạo sản phẩm', error: error.message });
     }
 }
 
-// Cập nhật sản phẩm
 async function updateProduct(req, res) {
     try {
-        const { id } = req.params;
-        const updatedProduct = await Product.findByIdAndUpdate(id, req.body, { new: true, runValidators: true }); // Gọi trực tiếp
+        const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
         if (!updatedProduct) {
             return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
         }
         res.status(200).json(updatedProduct);
     } catch (error) {
-        console.error('❌ LỖI KHI CẬP NHẬT SẢN PHẨM:', error);
         res.status(500).json({ message: 'Lỗi khi cập nhật sản phẩm', error: error.message });
     }
 }
 
-// Xóa sản phẩm
 async function deleteProduct(req, res) {
     try {
-        const { id } = req.params;
-        await Product.findByIdAndDelete(id); // Gọi trực tiếp
+        const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+         if (!deletedProduct) {
+            return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+        }
         res.status(204).send();
     } catch (error) {
-        console.error('❌ LỖI KHI XÓA SẢN PHẨM:', error);
         res.status(500).json({ message: 'Lỗi khi xóa sản phẩm', error: error.message });
     }
 }
 
-// Import nhiều sản phẩm
 async function importProducts(req, res) {
     try {
         const products = req.body;
         if (!Array.isArray(products) || products.length === 0) {
-            return res.status(400).json({ message: 'Dữ liệu sản phẩm không hợp lệ hoặc rỗng.' });
+            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
         }
-        const insertedProducts = await Product.insertMany(products); // Gọi trực tiếp
+        const result = await Product.insertMany(products, { ordered: false });
         res.status(201).json({ 
-            message: `Đã import thành công ${insertedProducts.length} sản phẩm.`,
-            data: insertedProducts 
+            message: `Đã import thành công ${result.length} sản phẩm.`,
         });
     } catch (error) {
-        console.error('❌ LỖI SERVER KHI IMPORT SẢN PHẨM:', error); 
-        res.status(500).json({ message: 'Lỗi khi import sản phẩm.', error: error.message });
+        if (error.code === 11000) {
+             res.status(409).json({ message: 'Lỗi: Có sản phẩm trùng lặp (mã hàng) trong file import.', error: error.message });
+        } else {
+             res.status(500).json({ message: 'Lỗi khi import sản phẩm.', error: error.message });
+        }
     }
 }
 
 module.exports = {
-    getProductById,
     getAllProducts,
+    getProductById,
     createProduct,
     updateProduct,
     deleteProduct,
     importProducts,
-    getUniqueCategories 
 };
