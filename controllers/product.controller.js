@@ -1,45 +1,43 @@
-// controllers/product.controller.js (Phiên bản có gắn log gỡ lỗi)
 const Product = require('../models/product.model');
+const Category = require('../models/category.model');
 
+// Helper function để tạo slug
+function generateSlug(str) {
+    str = str.toLowerCase().trim();
+    str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+    str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+    str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+    str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+    str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+    str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+    str = str.replace(/đ/g, "d");
+    str = str.replace(/[^a-z0-9\s-]/g, '');
+    str = str.replace(/\s+/g, '-');
+    str = str.replace(/-+/g, '-');
+    return str;
+}
+
+// Lấy tất cả sản phẩm (có phân trang và lọc theo danh mục)
 async function getAllProducts(req, res) {
-    console.log('[DEBUG] API /api/products called.'); // Log khi API được gọi
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 8;
         const category = req.query.category;
-
-        console.log('[DEBUG] Received query params:', req.query); // Log các tham số nhận được
-
         const query = {};
         if (category && category !== 'all') {
-            console.log('[DEBUG] Filtering by category slug:', category); // Log category đang được lọc
             query.danh_muc = category;
         }
-
-        console.log('[DEBUG] Final Mongoose query object:', JSON.stringify(query)); // Log câu query cuối cùng
-
         const skip = (page - 1) * limit;
-
-        const products = await Product.find(query)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
+        const products = await Product.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
         const totalProducts = await Product.countDocuments(query);
         const totalPages = Math.ceil(totalProducts / limit);
-
-        res.status(200).json({
-            products,
-            currentPage: page,
-            totalPages,
-        });
+        res.status(200).json({ products, currentPage: page, totalPages });
     } catch (error) {
-        console.error('[ERROR] Server error when getting products:', error);
         res.status(500).json({ message: 'Lỗi server khi lấy sản phẩm', error: error.message });
     }
 }
 
-// Các hàm khác giữ nguyên không đổi
+// Lấy sản phẩm bằng ID
 async function getProductById(req, res) {
     try {
         const product = await Product.findById(req.params.id);
@@ -52,6 +50,7 @@ async function getProductById(req, res) {
     }
 }
 
+// Tạo sản phẩm mới
 async function createProduct(req, res) {
     try {
         const newProduct = await Product.create(req.body);
@@ -61,6 +60,7 @@ async function createProduct(req, res) {
     }
 }
 
+// Cập nhật sản phẩm
 async function updateProduct(req, res) {
     try {
         const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
@@ -73,6 +73,7 @@ async function updateProduct(req, res) {
     }
 }
 
+// Xóa sản phẩm
 async function deleteProduct(req, res) {
     try {
         const deletedProduct = await Product.findByIdAndDelete(req.params.id);
@@ -85,24 +86,96 @@ async function deleteProduct(req, res) {
     }
 }
 
+/**
+ * @desc    Import sản phẩm, tự động tạo danh mục mới và bỏ qua mã hàng trùng
+ * @route   POST /api/products/import
+ * @access  Admin
+ */
 async function importProducts(req, res) {
     try {
-        const products = req.body;
-        if (!Array.isArray(products) || products.length === 0) {
-            return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
+        const productsFromExcel = req.body;
+        if (!Array.isArray(productsFromExcel) || productsFromExcel.length === 0) {
+            return res.status(400).json({ message: 'Không có dữ liệu hợp lệ để import.' });
         }
-        const result = await Product.insertMany(products, { ordered: false });
-        res.status(201).json({ 
-            message: `Đã import thành công ${result.length} sản phẩm.`,
+
+        // --- Giai đoạn 1: Xử lý Danh mục ---
+        const allCategories = await Category.find({});
+        const categoryMap = new Map(allCategories.map(cat => [cat.name.toLowerCase().trim(), cat.slug]));
+        
+        const newCategoryNames = new Set();
+        productsFromExcel.forEach(product => {
+            const categoryName = product.danh_muc;
+            if (typeof categoryName === 'string' && categoryName.trim()) {
+                if (!categoryMap.has(categoryName.toLowerCase().trim())) {
+                    newCategoryNames.add(categoryName.trim());
+                }
+            }
         });
-    } catch (error) {
-        if (error.code === 11000) {
-             res.status(409).json({ message: 'Lỗi: Có sản phẩm trùng lặp (mã hàng) trong file import.', error: error.message });
-        } else {
-             res.status(500).json({ message: 'Lỗi khi import sản phẩm.', error: error.message });
+
+        if (newCategoryNames.size > 0) {
+            const newCategoriesToCreate = Array.from(newCategoryNames).map(name => ({
+                name: name,
+                slug: generateSlug(name)
+            }));
+            const createdCategories = await Category.insertMany(newCategoriesToCreate, { ordered: false });
+            createdCategories.forEach(cat => {
+                categoryMap.set(cat.name.toLowerCase().trim(), cat.slug);
+            });
         }
+        
+        // --- Giai đoạn 2: Chuẩn bị danh sách sản phẩm cuối cùng để import ---
+        const incomingMaHangs = productsFromExcel.map(p => p.ma_hang).filter(Boolean);
+        const existingProducts = await Product.find({ ma_hang: { $in: incomingMaHangs } }).select('ma_hang');
+        const existingMaHangsSet = new Set(existingProducts.map(p => p.ma_hang));
+
+        const productsToInsert = [];
+        const skippedProducts = [];
+
+        for (const product of productsFromExcel) {
+            const categoryName = product.danh_muc;
+            const maHang = product.ma_hang;
+
+            if (!maHang || existingMaHangsSet.has(maHang)) {
+                skippedProducts.push({ ten_hang: product.ten_hang, reason: `Mã hàng '${maHang}' đã tồn tại hoặc không hợp lệ.` });
+                continue;
+            }
+
+            const categorySlug = typeof categoryName === 'string' ? categoryMap.get(categoryName.toLowerCase().trim()) : null;
+
+            if (categorySlug) {
+                product.danh_muc = categorySlug;
+                productsToInsert.push(product);
+                existingMaHangsSet.add(maHang);
+            } else {
+                 skippedProducts.push({ ten_hang: product.ten_hang, reason: `Danh mục '${categoryName}' không hợp lệ.` });
+            }
+        }
+        
+        // --- Giai đoạn 3: Thêm sản phẩm mới và Báo cáo kết quả ---
+        let importedCount = 0;
+        if (productsToInsert.length > 0) {
+            const result = await Product.insertMany(productsToInsert);
+            importedCount = result.length;
+        }
+
+        let message = `Hoàn tất! Đã import thành công ${importedCount} sản phẩm mới.`;
+        if (skippedProducts.length > 0) {
+            message += ` Đã bỏ qua/thất bại ${skippedProducts.length} sản phẩm.`;
+        }
+
+        res.status(201).json({
+            message: message,
+            successCount: importedCount,
+            skippedCount: skippedProducts.length,
+            failures: skippedProducts
+        });
+
+    } catch (error) {
+        console.error('[ERROR] Lỗi không xác định khi import sản phẩm:', error);
+        res.status(500).json({ message: 'Lỗi server nghiêm trọng khi import.', error: error.message });
     }
 }
+
 
 module.exports = {
     getAllProducts,
