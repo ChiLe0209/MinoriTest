@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết Sản phẩm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/output.css">
+    <link rel="icon" href="/images/logo.png">
+</head>
+<body class="bg-gray-100 font-sans">
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <nav class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+            <a href="index.html">
+                <img src="/images/41616930_transparent-1-1024x382.png" alt="Minori Logo" class="custom-logo h-10 sm:h-12">
+            </a>
+            
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="index.html#products" class="text-gray-600 hover:text-blue-600">Sản phẩm</a>
+                <a href="index.html#about" class="text-gray-600 hover:text-blue-600">Về chúng tôi</a>
+            </div>
+
+            <div class="md:hidden flex items-center">
+                <button id="hamburger-button" class="text-gray-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+            <a href="index.html#products" class="block py-3 px-4 text-sm text-gray-600 hover:bg-gray-100">Sản phẩm</a>
+            <a href="index.html#about" class="block py-3 px-4 text-sm text-gray-600 hover:bg-gray-100">Về chúng tôi</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 py-12">
+        <div id="product-detail-container" class="bg-white p-6 sm:p-8 rounded-lg shadow-lg grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+            <div id="product-image-container">
+                <img id="product-image" src="" alt="" class="w-full aspect-square rounded-lg object-contain">
+            </div>
+            <div id="product-info-container" class="flex flex-col">
+                <h1 id="product-name" class="text-3xl md:text-4xl font-bold text-gray-900">Đang tải...</h1>
+                <p class="text-gray-500 text-base md:text-lg mt-2">Thương hiệu: <span id="product-brand" class="font-semibold">...</span></p>
+                <p class="text-gray-500 text-base md:text-lg">Mã hàng: <span id="product-sku" class="font-semibold">...</span></p>
+                
+                <div class="my-6">
+                    <span class="text-3xl md:text-4xl font-bold text-blue-600" id="product-price">0đ</span>
+                    <span class="text-base md:text-lg text-gray-600 ml-4">Tồn kho: <span id="product-stock" class="font-semibold">0</span></span>
+                </div>
+
+                <div class="flex-grow">
+                    <h3 class="font-bold text-lg mb-2">Mô tả</h3>
+                    <div id="product-description" class="prose max-w-none text-gray-700 leading-relaxed"></div>
+                </div>
+
+                <button id="contact-btn" class="w-full mt-8 bg-blue-600 text-white font-bold py-3 sm:py-4 rounded-lg text-base sm:text-lg hover:bg-blue-700 transition-colors">
+                    Liên hệ
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <div id="contact-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md animate-scale-in">
+            <h3 class="text-2xl font-bold mb-6 text-center text-gray-800">Thông tin liên hệ</h3>
+            <div class="space-y-3 text-gray-700">
+                <p><strong>Cửa hàng:</strong> Minori Store</p>
+                <p><strong>Email:</strong> support@minori.vn</p>
+                <p><strong>Hotline:</strong> 1900 1234</p>
+                <p><strong>Địa chỉ:</strong> 123 Dsu Wai, Phường 26, Bình Thạnh, TP. Hồ Chí Minh</p>
+            </div>
+            <div class="flex justify-end mt-8">
+                <button id="close-contact-modal-btn" class="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/header.js"></script>
+    <script src="/js/product.js"></script>
+</body>
+</html>

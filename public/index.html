@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minori - Cửa hàng thể thao</title>
+    <link rel="stylesheet" href="/css/output.css">
+    <link rel="icon" type="image/png" href="/images/icon.jpg">
+</head>
+<body class="bg-gray-50 font-sans">
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <nav class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+            <a href="index.html">
+                <img src="/images/41616930_transparent-1-1024x382.png" alt="Minori Logo" class="custom-logo h-10 sm:h-12">
+            </a>
+            
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="#products" class="text-gray-600 hover:text-blue-600">Sản phẩm</a>
+                <a href="#about" class="text-gray-600 hover:text-blue-600">Về chúng tôi</a>
+            </div>
+
+            <div class="md:hidden flex items-center">
+                <button id="hamburger-button" class="text-gray-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+            <a href="#products" class="block py-3 px-4 text-sm text-gray-600 hover:bg-gray-100">Sản phẩm</a>
+            <a href="#about" class="block py-3 px-4 text-sm text-gray-600 hover:bg-gray-100">Về chúng tôi</a>
+        </div>
+    </header>
+    
+    <div class="hero-container relative w-full h-80 sm:h-96 md:h-[600px] overflow-hidden">
+        <img src="/images/hero-1.jpg" alt="Hero Image 1" class="hero-image absolute top-0 left-0 w-full h-full object-cover">
+        <img src="/images/hero-2.png" alt="Hero Image 2" class="hero-image absolute top-0 left-0 w-full h-full object-cover">
+        <img src="/images/hero-3.jpg" alt="Hero Image 3" class="hero-image absolute top-0 left-0 w-full h-full object-cover">
+        <img src="/images/hero-4.jpg" alt="Hero Image 4" class="hero-image absolute top-0 left-0 w-full h-full object-cover">
+    </div>
+
+    <main class="container mx-auto px-4 sm:px-6 py-12">
+        <section id="products">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-4">Sản Phẩm Của Chúng Tôi</h2>
+            <p class="text-center text-gray-600 mb-10">Khám phá những sản phẩm chất lượng cao dành cho bạn.</p>
+            <div id="category-filters" class="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-12">
+                <button data-category="all" class="filter-btn bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium shadow-sm transition-transform transform hover:scale-105 inline-flex items-center">Tất cả</button>
+            </div>
+            <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8"></div>
+            <div id="pagination-controls" class="flex justify-center items-center space-x-2 mt-12"></div>
+        </section>
+    </main>
+
+    <footer id="about" class="bg-white mt-16 py-16">
+        <div class="container mx-auto px-4 sm:px-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center md:text-left">Về Minori</h2>
+                    <p class="text-gray-600 leading-relaxed text-center md:text-left">
+                        Minori ra đời với sứ mệnh mang đến cho cộng đồng những sản phẩm thể thao chất lượng tốt nhất, công nghệ tiên tiến và thiết kế thời thượng.
+                    </p>
+                    <div class="mt-8 text-center md:text-left">
+                        <p class="text-gray-800 font-semibold">Thông tin liên hệ:</p>
+                        <p class="text-gray-600">Email: support@minori.vn | Hotline: 1900 1234</p>
+                    </div>
+                </div>
+                <div class="w-full">
+                    <div class="rounded-lg overflow-hidden shadow-lg h-80">
+                        <iframe 
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.0091276534035!2d106.70580147635503!3d10.810612341357373!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317529a2a4fb2b43%3A0x98d122eb1be61c4!2zTWlub3JpIFN0b3JlIC0gQ2h1ecOqbiBQaOG7pSBLaeG7h24gVGjhu4MgVGhhbw!5e0!3m2!1svi!2s!4v1750679424492!5m2!1svi!2s" 
+                            class="w-full h-full"
+                            style="border:0;" 
+                            allowfullscreen="" 
+                            loading="lazy" 
+                            referrerpolicy="no-referrer-when-downgrade">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center text-gray-500 mt-16 border-t border-gray-200 pt-8">
+                <p>© 2025 Minori. All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <div id="contact-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md animate-scale-in">
+            <h3 class="text-2xl font-bold mb-6 text-center text-gray-800">Thông tin liên hệ</h3>
+            <div class="space-y-3 text-gray-700">
+                <p><strong>Cửa hàng:</strong> Minori Store</p>
+                <p><strong>Email:</strong> support@minori.vn</p>
+                <p><strong>Hotline:</strong> 1900 1234</p>
+                <p><strong>Địa chỉ:</strong> 123 Dsu Wai, Phường 26, Bình Thạnh, TP. Hồ Chí Minh</p>
+            </div>
+            <div class="flex justify-end mt-8">
+                <button id="close-contact-modal-btn" class="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Đóng</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/header.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
