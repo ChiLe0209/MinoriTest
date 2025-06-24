@@ -1,36 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[DEBUG] Admin script loaded and running.');
 
-    // --- 1. KHAI BÁO BIẾN VÀ LẤY DOM ELEMENTS ---
+    // --- 1. KHAI BÁO BIẾN ---
     const ADMIN_PASSWORD = "admin";
     let currentProductPage = 1;
 
-    // Login
+    // --- 2. LẤY DOM ELEMENTS ---
     const loginSection = document.getElementById('admin-login');
     const dashboardSection = document.getElementById('admin-dashboard');
     const loginBtn = document.getElementById('login-btn');
     const passwordInput = document.getElementById('password-input');
-
-    // Tabs
     const adminTabs = document.getElementById('admin-tabs');
-    const productTabContent = document.getElementById('products-tab-content');
-    const orderTabContent = document.getElementById('orders-tab-content');
-    const categoriesTabContent = document.getElementById('categories-tab-content');
-
-    // Tables
     const productsTableBody = document.getElementById('products-table-body');
     const categoriesTableBody = document.getElementById('categories-table-body');
-    const ordersTableBody = document.getElementById('orders-table-body');
     const productPaginationControls = document.getElementById('product-pagination-controls');
-
-    // Product Modal
     const addProductBtn = document.getElementById('add-product-btn');
     const productModal = document.getElementById('product-modal');
     const productForm = document.getElementById('product-form');
     const closeModalBtn = document.getElementById('close-product-modal-btn');
     const modalTitle = document.getElementById('modal-title');
-    
-    // Category Modal
     const addCategoryBtn = document.getElementById('add-category-btn');
     const categoryModal = document.getElementById('category-modal');
     const categoryForm = document.getElementById('category-form');
@@ -38,13 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoryModalTitle = document.getElementById('category-modal-title');
     const categoryDisplayNameInput = document.getElementById('category-display-name');
     const categorySlugInput = document.getElementById('category-slug');
-
-    // Excel
     const importExcelBtn = document.getElementById('import-excel-btn');
     const importExcelInput = document.getElementById('import-excel-input');
     const downloadTemplateBtn = document.getElementById('download-template-btn');
 
-    // --- 2. CÁC HÀM HELPER ---
+    // --- 3. CÁC HÀM HELPER ---
     const formatCurrency = (amount) => {
         if (typeof amount !== 'number') return '0 đ';
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -78,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function sendData(url, method, data) {
         try {
-            const response = await fetch(`http://localhost:8000${url}`, {
+            const response = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: data ? JSON.stringify(data) : null,
@@ -95,14 +81,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 3. CÁC HÀM RENDER ---
+    // --- 4. CÁC HÀM RENDER & LOGIC ---
+    function initializeTinyMCE(content = '') {
+        if (tinymce.get('product-mo-ta')) {
+            tinymce.get('product-mo-ta').remove();
+        }
+        tinymce.init({
+            selector: 'textarea#product-mo-ta',
+            plugins: 'autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
+            toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | help',
+            height: 300,
+            setup: function(editor) {
+                editor.on('init', function() {
+                    this.setContent(content);
+                });
+            }
+        });
+    }
+
+    function switchTab(activeTab) {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('text-blue-600', 'border-blue-600', 'font-semibold');
+        });
+        const activeBtn = document.querySelector(`.tab-btn[data-tab="${activeTab}"]`);
+        if (activeBtn) activeBtn.classList.add('text-blue-600', 'border-blue-600', 'font-semibold');
+        
+        document.querySelectorAll('.tab-content').forEach(content => {
+            if(content) content.classList.add('hidden');
+        });
+        const activeContent = document.getElementById(`${activeTab}-tab-content`);
+        if (activeContent) activeContent.classList.remove('hidden');
+    }
+
+    async function populateCategoryDropdown() {
+        const selectElement = document.getElementById('product-danh-muc');
+        if (!selectElement) return;
+        const categories = await fetchData('/api/categories');
+        selectElement.innerHTML = '';
+        if (categories && Array.isArray(categories)) {
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.slug;
+                option.textContent = category.name;
+                selectElement.appendChild(option);
+            });
+        }
+    }
+
     const renderProductsTable = async (page = 1) => {
         if (!productsTableBody) return;
         const data = await fetchData(`/api/products?page=${page}&limit=10`);
         const products = data ? data.products : [];
         currentProductPage = data ? data.currentPage : 1;
         productsTableBody.innerHTML = '';
-
         if (!products || products.length === 0) {
             productsTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-gray-500">Chưa có sản phẩm nào.</td></tr>';
         } else {
@@ -112,12 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="px-5 py-4 text-sm text-gray-800 hidden sm:table-cell">${p.ma_hang}</td>
                         <td class="px-5 py-4 text-sm">
                             <div class="flex items-center">
-                                <div class="flex-shrink-0 w-12 h-12">
-                                    <img class="w-full h-full rounded-md object-cover" src="${p.hinh_anh}" alt="${p.ten_hang}">
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-gray-900 font-semibold whitespace-no-wrap">${p.ten_hang}</p>
-                                </div>
+                                <div class="flex-shrink-0 w-12 h-12"><img class="w-full h-full rounded-md object-cover" src="${p.hinh_anh}" alt="${p.ten_hang}"></div>
+                                <div class="ml-3"><p class="text-gray-900 font-semibold whitespace-no-wrap">${p.ten_hang}</p></div>
                             </div>
                         </td>
                         <td class="px-5 py-4 text-sm text-gray-700 hidden lg:table-cell">${p.thuong_hieu}</td>
@@ -155,31 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const renderOrdersTable = async () => {
-        if (!ordersTableBody) return;
-        const data = await fetchData('/api/orders');
-        const orders = Array.isArray(data) ? data : [];
-        ordersTableBody.innerHTML = '';
-        if (orders.length === 0) {
-            ordersTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-gray-500">Chưa có đơn hàng nào.</td></tr>';
-        } else {
-            orders.forEach(order => {
-                const customerName = order.customer ? order.customer.name : 'N/A';
-                const customerPhone = order.customer ? order.customer.phone : 'N/A';
-                const customerAddress = order.customer ? order.customer.address : 'Chưa có thông tin';
-                const productsList = Array.isArray(order.items) ? order.items.map(item => `<li class="text-sm">${item.name || 'sản phẩm không xác định'} (SL: ${item.quantity})</li>`).join('') : '';
-                const row = `<tr class="border-b hover:bg-gray-100 align-top">
-                                <td class="px-5 py-4"><p class="font-semibold text-gray-900">${customerName}</p><p class="text-sm text-gray-600">${customerPhone}</p></td>
-                                <td class="px-5 py-4 text-sm text-gray-700 hidden sm:table-cell">${customerAddress}</td>
-                                <td class="px-5 py-4 text-sm"><ul class="list-disc list-inside">${productsList}</ul></td>
-                                <td class="px-5 py-4 font-bold text-blue-600">${formatCurrency(order.total_price)}</td>
-                                <td class="px-5 py-4 text-sm text-gray-600 hidden md:table-cell">${new Date(order.order_date).toLocaleString('vi-VN')}</td>
-                             </tr>`;
-                ordersTableBody.innerHTML += row;
-            });
-        }
-    };
-
     function renderProductPagination(totalPages, currentPage) {
         if (!productPaginationControls) return;
         productPaginationControls.innerHTML = '';
@@ -192,60 +194,42 @@ document.addEventListener('DOMContentLoaded', () => {
             productPaginationControls.appendChild(pageButton);
         }
     }
-
-    async function populateCategoryDropdown() {
-        const selectElement = document.getElementById('product-danh-muc');
-        if (!selectElement) return;
-        const categories = await fetchData('/api/categories');
-        selectElement.innerHTML = '';
-        if (categories && Array.isArray(categories)) {
-            categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category.slug;
-                option.textContent = category.name;
-                selectElement.appendChild(option);
-            });
-        }
+    
+    function exportSampleExcel() {
+        const sampleData = [{ ma_hang: "AT-001", ten_hang: "Áo Thun Thể Thao", thuong_hieu: "Minori", danh_muc: "ao-thun", gia_ban: 350000, ton_kho: 100, hinh_anh: "/images/sample.jpg", mo_ta_chi_tiet: "Mô tả mẫu."}];
+        const worksheet = XLSX.utils.json_to_sheet(sampleData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+        XLSX.writeFile(workbook, "Mau_San_Pham.xlsx");
     }
 
-    // --- 4. CÁC HÀM XỬ LÝ LOGIC ---
-    function initializeTinyMCE(content = '') {
-        if (tinymce.get('product-mo-ta')) {
-            tinymce.get('product-mo-ta').setContent(content);
-        } else {
-            tinymce.init({
-                selector: 'textarea#product-mo-ta',
-                plugins: 'autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
-                toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | help',
-                height: 300,
-                setup: function(editor) {
-                    editor.on('init', function() {
-                        editor.setContent(content);
-                    });
+    function readExcelFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                if (jsonData.length === 0) return alert('File Excel rỗng.');
+                alert(`Chuẩn bị import ${jsonData.length} sản phẩm.`);
+                const response = await sendData('/api/products/import', 'POST', jsonData);
+                if (response && response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+                    await renderProductsTable(1);
                 }
-            });
-        }
+            } catch (error) {
+                alert(`Đã có lỗi xảy ra khi đọc file: ${error.message}`);
+            } finally {
+                if (importExcelInput) importExcelInput.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
-
-    function switchTab(activeTab) {
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('text-blue-600', 'border-blue-600', 'font-semibold');
-        });
-        const activeBtn = document.querySelector(`.tab-btn[data-tab="${activeTab}"]`);
-        if(activeBtn) activeBtn.classList.add('text-blue-600', 'border-blue-600', 'font-semibold');
-        
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.add('hidden');
-        });
-        const activeContent = document.getElementById(`${activeTab}-tab-content`);
-        if(activeContent) activeContent.classList.remove('hidden');
-    }
-
-    function exportSampleExcel() { /* Giữ nguyên không đổi */ }
-    function readExcelFile(file) { /* Giữ nguyên không đổi */ }
-
+    
     // --- 5. GẮN CÁC SỰ KIỆN ---
-
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
             if (passwordInput && passwordInput.value === ADMIN_PASSWORD) {
@@ -253,7 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 dashboardSection.classList.remove('hidden');
                 switchTab('products');
                 renderProductsTable(1);
-                renderOrdersTable();
                 renderCategoriesTable();
             } else {
                 alert('Mật khẩu không chính xác!');
@@ -270,9 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(adminTabs) {
         adminTabs.addEventListener('click', (e) => {
             const tabButton = e.target.closest('.tab-btn');
-            if (tabButton && tabButton.dataset.tab) {
-                switchTab(tabButton.dataset.tab);
-            }
+            if (tabButton && tabButton.dataset.tab) switchTab(tabButton.dataset.tab);
         });
     }
 
@@ -418,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (categoryDisplayNameInput) {
         categoryDisplayNameInput.addEventListener('input', () => {
             const categoryId = document.getElementById('category-id').value;
-            if (!categoryId) { // Chỉ tự động tạo slug khi thêm mới
+            if (!categoryId) {
                  categorySlugInput.value = generateSlug(categoryDisplayNameInput.value);
             }
         });
