@@ -15,9 +15,15 @@ const categorySchema = new mongoose.Schema(
             unique: true,
             lowercase: true,
         },
+        // Thêm trường 'parent' để lưu danh mục cha
+        parent: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Category', // Tham chiếu đến chính model Category
+            default: null,   // Mặc định là null, tức là danh mục gốc
+        },
     },
     {
-        timestamps: true, // Tự động thêm trường createdAt và updatedAt
+        timestamps: true,
     }
 );
 

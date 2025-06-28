@@ -3,9 +3,6 @@ const express = require('express');
 const router = express.Router();
 const ProductController = require('../controllers/product.controller');
 
-// Route để import sản phẩm
-router.post('/import', ProductController.importProducts);
-
 // Route để lấy tất cả sản phẩm (có phân trang/lọc)
 router.get('/', ProductController.getAllProducts);
 

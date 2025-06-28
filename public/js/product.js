@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // 1. LẤY CÁC PHẦN TỬ DOM
+    // === LẤY CÁC PHẦN TỬ DOM ===
     const productNameEl = document.getElementById('product-name');
     const productBrandEl = document.getElementById('product-brand');
     const productSkuEl = document.getElementById('product-sku');
@@ -8,78 +8,132 @@ document.addEventListener('DOMContentLoaded', () => {
     const productStockEl = document.getElementById('product-stock');
     const productImageEl = document.getElementById('product-image');
     const productDescriptionEl = document.getElementById('product-description');
-    
-    // Các element của chức năng liên hệ
-    const contactBtn = document.getElementById('contact-btn');
-    const contactModal = document.getElementById('contact-modal');
-    const closeContactModalBtn = document.getElementById('close-contact-modal-btn');
+    const variantOptionsContainer = document.getElementById('variant-options');
+    const variantsContainer = document.getElementById('variants-container');
 
-    // --- HÀM HELPER ---
-    const formatCurrency = (amount) => {
-        if (typeof amount !== 'number') return 'Chưa có giá';
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-    };
+    const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
-    // --- HÀM LẤY VÀ HIỂN THỊ DỮ LIỆU SẢN PHẨM ---
-    async function fetchAndDisplayProduct() {
-        // Lấy ID sản phẩm từ URL
+    /**
+     * Cập nhật giao diện với thông tin của một biến thể cụ thể.
+     * @param {object} product - Dữ liệu sản phẩm chung.
+     * @param {object} variant - Dữ liệu của biến thể được chọn.
+     */
+    function displayVariantDetails(product, variant) {
+        document.title = `${product.ten_hang} - ${variant.name}`;
+        
+        productNameEl.textContent = product.ten_hang;
+        productBrandEl.textContent = product.thuong_hieu;
+        productDescriptionEl.innerHTML = product.mo_ta_chi_tiet || "Sản phẩm này chưa có mô tả chi tiết.";
+
+        // Cập nhật thông tin theo biến thể
+        productImageEl.src = variant.image;
+        productImageEl.alt = `${product.ten_hang} - ${variant.name}`;
+        productPriceEl.textContent = formatCurrency(variant.price);
+        productStockEl.textContent = variant.stock;
+        productSkuEl.textContent = variant.sku || product.ma_hang; // Ưu tiên SKU của biến thể
+    }
+
+    /**
+     * Tạo các nút để chọn biến thể.
+     * @param {object} product - Dữ liệu sản phẩm chung.
+     */
+    function renderVariantOptions(product) {
+        if (!variantOptionsContainer || !product.variants || product.variants.length <= 1) {
+            variantsContainer.style.display = 'none'; // Ẩn khu vực chọn nếu không có hoặc chỉ có 1 biến thể
+            return;
+        }
+
+        variantOptionsContainer.innerHTML = '';
+        product.variants.forEach((variant, index) => {
+            const button = document.createElement('button');
+            button.className = 'variant-btn';
+            button.textContent = variant.name;
+            button.dataset.index = index; // Lưu chỉ số của biến thể
+
+            // Đặt active cho biến thể đầu tiên
+            if (index === 0) {
+                button.classList.add('active');
+            }
+
+            button.addEventListener('click', () => {
+                // Xóa active ở các nút khác
+                document.querySelectorAll('.variant-btn').forEach(btn => btn.classList.remove('active'));
+                // Thêm active cho nút được click
+                button.classList.add('active');
+                
+                // Lấy biến thể được chọn từ mảng và hiển thị lại chi tiết
+                const selectedVariant = product.variants[index];
+                displayVariantDetails(product, selectedVariant);
+            });
+
+            variantOptionsContainer.appendChild(button);
+        });
+    }
+
+    /**
+     * Hàm chính: Lấy dữ liệu sản phẩm từ API và khởi tạo trang.
+     */
+    async function initProductPage() {
         const params = new URLSearchParams(window.location.search);
         const productId = params.get('id');
 
         if (!productId) {
-            if(productNameEl) productNameEl.textContent = "Sản phẩm không hợp lệ hoặc không tồn tại.";
+            document.body.innerHTML = '<p class="text-center text-red-500 text-2xl p-10">ID sản phẩm không hợp lệ.</p>';
             return;
         }
 
         try {
-            // Gọi đến API tương đối, không dùng localhost
             const response = await fetch(`/api/products/${productId}`);
-            if (!response.ok) {
-                throw new Error('Không tìm thấy sản phẩm');
-            }
+            if (!response.ok) throw new Error('Không tìm thấy sản phẩm');
+            
             const product = await response.json();
 
-            // Điền thông tin sản phẩm vào trang
-            document.title = product.ten_hang;
-            if(productNameEl) productNameEl.textContent = product.ten_hang;
-            if(productBrandEl) productBrandEl.textContent = product.thuong_hieu;
-            if(productSkuEl) productSkuEl.textContent = product.ma_hang;
-            if(productPriceEl) productPriceEl.textContent = formatCurrency(product.gia_ban);
-            if(productStockEl) productStockEl.textContent = product.ton_kho;
-            if(productImageEl) {
-                productImageEl.src = product.hinh_anh;
-                productImageEl.alt = product.ten_hang;
+            // Kiểm tra xem sản phẩm có biến thể hay không
+            if (!product.variants || product.variants.length === 0) {
+                 // Nếu không có biến thể, hiển thị ảnh bìa và các thông tin cũ (nếu có)
+                productImageEl.src = product.hinh_anh_bia;
+                productNameEl.textContent = product.ten_hang;
+                productPriceEl.textContent = formatCurrency(product.gia_ban); // Giả sử có giá bán cũ
+                variantsContainer.style.display = 'none';
+                return;
             }
-            if (productDescriptionEl) {
-                // Dùng innerHTML để có thể hiển thị các định dạng HTML
-                productDescriptionEl.innerHTML = product.mo_ta_chi_tiet || "Sản phẩm này chưa có mô tả chi tiết.";
-            }
+
+            // Mặc định hiển thị biến thể đầu tiên
+            const defaultVariant = product.variants[0];
+            displayVariantDetails(product, defaultVariant);
+            
+            // Tạo các nút chọn biến thể
+            renderVariantOptions(product);
 
         } catch (error) {
             console.error('Lỗi khi lấy dữ liệu sản phẩm:', error);
-            const container = document.getElementById('product-detail-container');
-            if (container) {
-                container.innerHTML = `<p class="text-center text-red-500 text-2xl col-span-full">${error.message}</p>`;
-            }
+            document.getElementById('product-detail-container').innerHTML = `<p class="text-center text-red-500 text-2xl col-span-full">${error.message}</p>`;
         }
     }
-    
-    // --- GẮN CÁC SỰ KIỆN ---
 
-    // Gắn sự kiện cho nút "Liên hệ" chính
-    if (contactBtn && contactModal) {
-        contactBtn.addEventListener('click', () => {
-            contactModal.classList.remove('hidden');
-        });
-    }
+    // Thêm một ít CSS để nút biến thể trông đẹp hơn
+    const style = document.createElement('style');
+    style.textContent = `
+        .variant-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--border-color, #e5e7eb);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .variant-btn:hover {
+            border-color: var(--primary-color, #2563eb);
+            color: var(--primary-color, #2563eb);
+        }
+        .variant-btn.active {
+            border-color: var(--primary-color, #2563eb);
+            background-color: var(--primary-color, #2563eb);
+            color: white;
+        }
+    `;
+    document.head.appendChild(style);
 
-    // Gắn sự kiện cho nút "Đóng" trên modal
-    if (closeContactModalBtn && contactModal) {
-        closeContactModalBtn.addEventListener('click', () => {
-            contactModal.classList.add('hidden');
-        });
-    }
-    
-    // --- KHỞI CHẠY ---
-    fetchAndDisplayProduct();
+    // Khởi chạy
+    initProductPage();
 });

@@ -1,24 +1,31 @@
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('[DEBUG] Admin script loaded and running.');
-
-    // --- 1. KHAI BÁO BIẾN ---
+document.addEventListener('DOMContentLoaded', function () {
     const ADMIN_PASSWORD = "admin";
     let currentProductPage = 1;
 
-    // --- 2. LẤY DOM ELEMENTS ---
+    // --- DOM Elements ---
     const loginSection = document.getElementById('admin-login');
     const dashboardSection = document.getElementById('admin-dashboard');
     const loginBtn = document.getElementById('login-btn');
     const passwordInput = document.getElementById('password-input');
-    const adminTabs = document.getElementById('admin-tabs');
+
+    const sidebar = document.querySelector('.sidebar');
+    const menuToggle = document.getElementById('menu-toggle');
+    const switchMode = document.getElementById('switch-mode');
+    const sideMenuLinks = document.querySelectorAll('.sidebar .side-menu li a');
+    const mainContents = document.querySelectorAll('.main-content');
+
+    const totalProductsStat = document.getElementById('total-products-stat');
+    const totalCategoriesStat = document.getElementById('total-categories-stat');
+
     const productsTableBody = document.getElementById('products-table-body');
-    const categoriesTableBody = document.getElementById('categories-table-body');
     const productPaginationControls = document.getElementById('product-pagination-controls');
     const addProductBtn = document.getElementById('add-product-btn');
     const productModal = document.getElementById('product-modal');
     const productForm = document.getElementById('product-form');
-    const closeModalBtn = document.getElementById('close-product-modal-btn');
+    const closeProductModalBtn = document.getElementById('close-product-modal-btn');
     const modalTitle = document.getElementById('modal-title');
+
+    const categoriesTableBody = document.getElementById('categories-table-body');
     const addCategoryBtn = document.getElementById('add-category-btn');
     const categoryModal = document.getElementById('category-modal');
     const categoryForm = document.getElementById('category-form');
@@ -26,28 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoryModalTitle = document.getElementById('category-modal-title');
     const categoryDisplayNameInput = document.getElementById('category-display-name');
     const categorySlugInput = document.getElementById('category-slug');
-    const importExcelBtn = document.getElementById('import-excel-btn');
-    const importExcelInput = document.getElementById('import-excel-input');
-    const downloadTemplateBtn = document.getElementById('download-template-btn');
 
-    // --- 3. CÁC HÀM HELPER ---
-    const formatCurrency = (amount) => {
-        if (typeof amount !== 'number') return '0 đ';
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-    };
+
+    // --- Helper Functions ---
+    const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
     function generateSlug(str) {
-        str = str.toLowerCase().trim();
-        str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
-        str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
-        str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
-        str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
-        str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
-        str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
-        str = str.replace(/đ/g, "d");
-        str = str.replace(/[^a-z0-9\s-]/g, '');
-        str = str.replace(/\s+/g, '-');
-        str = str.replace(/-+/g, '-');
+        str = str.toLowerCase().trim().replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a").replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e").replace(/ì|í|ị|ỉ|ĩ/g, "i").replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o").replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u").replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y").replace(/đ/g, "d").replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
         return str;
     }
 
@@ -56,16 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return await response.json();
-        } catch (error) {
-            console.error(`Lỗi khi tải dữ liệu từ ${url}:`, error);
-            return null;
-        }
+        } catch (error) { console.error(`Fetch error from ${url}:`, error); return null; }
     }
 
     async function sendData(url, method, data) {
         try {
             const response = await fetch(url, {
-                method: method,
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: data ? JSON.stringify(data) : null,
             });
@@ -74,344 +63,326 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
             return response;
-        } catch (error) {
-            console.error(`Lỗi khi gửi dữ liệu đến ${url}:`, error);
-            alert(`Thao tác thất bại: ${error.message}`);
-            return null;
-        }
+        } catch (error) { alert(`Thao tác thất bại: ${error.message}`); return null; }
     }
-
-    // --- 4. CÁC HÀM RENDER & LOGIC ---
+    
     function initializeTinyMCE(content = '') {
-        if (tinymce.get('product-mo-ta')) {
-            tinymce.get('product-mo-ta').remove();
-        }
+        tinymce.get('product-mo-ta')?.remove();
         tinymce.init({
             selector: 'textarea#product-mo-ta',
             plugins: 'autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
             toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | indent outdent | bullist numlist | code | help',
             height: 300,
-            setup: function(editor) {
-                editor.on('init', function() {
-                    this.setContent(content);
-                });
-            }
+            setup: editor => editor.on('init', function () { this.setContent(content); })
         });
     }
 
-    function switchTab(activeTab) {
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('text-blue-600', 'border-blue-600', 'font-semibold');
-        });
-        const activeBtn = document.querySelector(`.tab-btn[data-tab="${activeTab}"]`);
-        if (activeBtn) activeBtn.classList.add('text-blue-600', 'border-blue-600', 'font-semibold');
+    // --- UI Logic ---
+    function setupDashboardUI() {
+        menuToggle?.addEventListener('click', () => sidebar?.classList.toggle('hide'));
         
-        document.querySelectorAll('.tab-content').forEach(content => {
-            if(content) content.classList.add('hidden');
+        switchMode?.addEventListener('change', function () {
+            document.body.classList.toggle('dark', this.checked);
         });
-        const activeContent = document.getElementById(`${activeTab}-tab-content`);
-        if (activeContent) activeContent.classList.remove('hidden');
-    }
-
-    async function populateCategoryDropdown() {
-        const selectElement = document.getElementById('product-danh-muc');
-        if (!selectElement) return;
-        const categories = await fetchData('/api/categories');
-        selectElement.innerHTML = '';
-        if (categories && Array.isArray(categories)) {
-            categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category.slug;
-                option.textContent = category.name;
-                selectElement.appendChild(option);
+        
+        sideMenuLinks.forEach(link => {
+            if (link.classList.contains('logout')) return;
+            
+            link.addEventListener('click', function(event) {
+                event.preventDefault();
+                
+                const parentLi = this.parentElement;
+                if (!parentLi || parentLi.classList.contains('active')) return;
+                
+                document.querySelectorAll('.sidebar .side-menu li').forEach(li => {
+                    li.classList.remove('active');
+                });
+                
+                parentLi.classList.add('active');
+                
+                const contentId = parentLi.dataset.content;
+                if (contentId) {
+                    mainContents.forEach(content => content.classList.add('hidden'));
+                    const activeContent = document.getElementById(contentId);
+                    activeContent?.classList.remove('hidden');
+                }
             });
-        }
+        });
     }
 
-    const renderProductsTable = async (page = 1) => {
-        if (!productsTableBody) return;
+    // --- Render Logic (Đầy đủ) ---
+    async function loadStats() {
+        const productData = await fetchData('/api/products?limit=1');
+        const categoryData = await fetchData('/api/categories/flat');
+        if(totalProductsStat && productData) totalProductsStat.textContent = productData.totalProducts || 0;
+        if(totalCategoriesStat && categoryData) totalCategoriesStat.textContent = categoryData.length || 0;
+    }
+
+const renderProductsTable = async (page = 1) => {
         const data = await fetchData(`/api/products?page=${page}&limit=10`);
-        const products = data ? data.products : [];
-        currentProductPage = data ? data.currentPage : 1;
+        const products = data?.products || [];
+        currentProductPage = data?.currentPage || 1;
         productsTableBody.innerHTML = '';
-        if (!products || products.length === 0) {
-            productsTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-gray-500">Chưa có sản phẩm nào.</td></tr>';
-        } else {
-            products.forEach(p => {
-                productsTableBody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-100">
-                        <td class="px-5 py-4 text-sm text-gray-800 hidden sm:table-cell">${p.ma_hang}</td>
-                        <td class="px-5 py-4 text-sm">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 w-12 h-12"><img class="w-full h-full rounded-md object-cover" src="${p.hinh_anh}" alt="${p.ten_hang}"></div>
-                                <div class="ml-3"><p class="text-gray-900 font-semibold whitespace-no-wrap">${p.ten_hang}</p></div>
-                            </div>
-                        </td>
-                        <td class="px-5 py-4 text-sm text-gray-700 hidden lg:table-cell">${p.thuong_hieu}</td>
-                        <td class="px-5 py-4 text-sm text-gray-700 hidden md:table-cell">${p.danh_muc}</td>
-                        <td class="px-5 py-4 text-sm text-green-600 font-semibold">${formatCurrency(p.gia_ban)}</td>
-                        <td class="px-5 py-4 text-sm text-center font-semibold hidden sm:table-cell">${p.ton_kho}</td>
-                        <td class="px-5 py-4 text-sm">
-                            <button data-id="${p._id}" class="edit-product-btn text-yellow-600 hover:text-yellow-800 font-medium mr-3">Sửa</button>
-                            <button data-id="${p._id}" class="delete-product-btn text-red-600 hover:text-red-800 font-medium">Xóa</button>
-                        </td>
-                    </tr>`;
-            });
+
+        if (products.length === 0) {
+            productsTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">Chưa có sản phẩm nào.</td></tr>';
+            return;
         }
+        
+        products.forEach(p => {
+            // Logic kiểm tra an toàn để lấy dữ liệu hiển thị
+            const hasVariants = Array.isArray(p.variants) && p.variants.length > 0;
+            let displayPrice = 0;
+            let displayStock = 0;
+            
+            // Nếu có biến thể, lấy thông tin từ biến thể đầu tiên và tính tổng tồn kho
+            if (hasVariants) {
+                displayPrice = p.variants[0].price;
+                displayStock = p.variants.reduce((total, v) => total + (v.stock || 0), 0);
+            } else if ('gia_ban' in p) { // Nếu không, kiểm tra và lấy thông tin từ sản phẩm cũ
+                displayPrice = p.gia_ban;
+                displayStock = p.ton_kho;
+            }
+
+            // Ưu tiên hiển thị ảnh bìa, nếu không có thì dùng ảnh cũ (hinh_anh)
+            const displayImage = p.hinh_anh_bia || p.hinh_anh || 'https://placehold.co/36x36/f3f4f6/9ca3af?text=Img';
+
+            productsTableBody.innerHTML += `
+                <tr>
+                    <td>
+                        <img src="${displayImage}" onerror="this.onerror=null;this.src='https://placehold.co/36x36/f3f4f6/9ca3af?text=Img';">
+                        <p>${p.ten_hang}</p>
+                    </td>
+                    <td>${p.ma_hang}</td>
+                    <td>${formatCurrency(displayPrice)}</td>
+                    <td>${displayStock}</td>
+                    <td>
+                       <button class="action-btn edit-btn" data-id="${p._id}"><i class="ri-edit-line"></i></button>
+                       <button class="action-btn delete-btn" data-id="${p._id}"><i class="ri-delete-bin-line"></i></button>
+                    </td>
+                </tr>`;
+        });
+        
         if (data) renderProductPagination(data.totalPages, data.currentPage);
     };
 
     const renderCategoriesTable = async () => {
-        if (!categoriesTableBody) return;
-        const categories = await fetchData('/api/categories');
+        const categories = await fetchData('/api/categories/flat');
         categoriesTableBody.innerHTML = '';
         if (!categories || categories.length === 0) {
-            categoriesTableBody.innerHTML = '<tr><td colspan="3" class="text-center p-6 text-gray-500">Chưa có danh mục nào.</td></tr>';
+            categoriesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">Chưa có danh mục nào.</td></tr>';
         } else {
             categories.forEach(cat => {
                 categoriesTableBody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-100">
-                        <td class="px-5 py-4 text-sm font-semibold text-gray-900">${cat.name}</td>
-                        <td class="px-5 py-4 text-sm text-gray-700">${cat.slug}</td>
-                        <td class="px-5 py-4 text-sm">
-                            <button data-id="${cat._id}" data-name="${cat.name}" data-slug="${cat.slug}" class="edit-category-btn text-yellow-600 hover:text-yellow-800 font-medium mr-3">Sửa</button>
-                            <button data-id="${cat._id}" class="delete-category-btn text-red-600 hover:text-red-800 font-medium">Xóa</button>
+                    <tr>
+                        <td>${cat.name}</td>
+                        <td>${cat.slug}</td>
+                        <td>${cat.parent?.name || '<em>-</em>'}</td>
+                        <td>
+                           <button class="action-btn edit-btn" data-id="${cat._id}"><i class="ri-edit-line"></i></button>
+                           <button class="action-btn delete-btn" data-id="${cat._id}"><i class="ri-delete-bin-line"></i></button>
                         </td>
                     </tr>`;
             });
         }
     };
-
+    
     function renderProductPagination(totalPages, currentPage) {
-        if (!productPaginationControls) return;
         productPaginationControls.innerHTML = '';
         if (totalPages <= 1) return;
+        const createBtn = (page, content, disabled = false, active = false) => {
+            const button = document.createElement('button');
+            button.dataset.page = page;
+            button.innerHTML = content;
+            button.disabled = disabled;
+            if (active) button.classList.add('active');
+            button.addEventListener('click', () => renderProductsTable(page));
+            return button;
+        };
+        productPaginationControls.appendChild(createBtn(currentPage - 1, 'Trước', currentPage === 1));
         for (let i = 1; i <= totalPages; i++) {
-            const pageButton = document.createElement('button');
-            pageButton.textContent = i;
-            pageButton.dataset.page = i;
-            pageButton.className = (i === currentPage) ? 'px-4 py-2 text-white bg-blue-600 rounded-md shadow-md' : 'px-4 py-2 text-gray-700 bg-white rounded-md shadow-md hover:bg-gray-100';
-            productPaginationControls.appendChild(pageButton);
+            productPaginationControls.appendChild(createBtn(i, i, false, i === currentPage));
+        }
+        productPaginationControls.appendChild(createBtn(currentPage + 1, 'Sau', currentPage === totalPages));
+    }
+
+    // --- Modal & Form Logic ---
+    async function populateProductCategoryDropdown(selectedSlug = '') {
+        const select = document.getElementById('product-danh-muc');
+        if (!select) return;
+        const categories = await fetchData('/api/categories/flat');
+        select.innerHTML = '<option value="">-- Chọn danh mục --</option>';
+        if (categories && Array.isArray(categories)) {
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.slug;
+                option.textContent = cat.parent ? `--- ${cat.name}` : `[CHA] ${cat.name}`;
+                if (cat.slug === selectedSlug) option.selected = true;
+                select.appendChild(option);
+            });
         }
     }
     
-    function exportSampleExcel() {
-        const sampleData = [{ ma_hang: "AT-001", ten_hang: "Áo Thun Thể Thao", thuong_hieu: "Minori", danh_muc: "ao-thun", gia_ban: 350000, ton_kho: 100, hinh_anh: "/images/sample.jpg", mo_ta_chi_tiet: "Mô tả mẫu."}];
-        const worksheet = XLSX.utils.json_to_sheet(sampleData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
-        XLSX.writeFile(workbook, "Mau_San_Pham.xlsx");
+    async function populateParentCategoryDropdown(selectedParentId = null) {
+        const select = document.getElementById('category-parent');
+        if (!select) return;
+        const rootCategories = await fetchData('/api/categories/roots'); 
+        select.innerHTML = '<option value="" disabled selected>-- Chọn danh mục cha --</option>';
+        select.required = true;
+        if (rootCategories && Array.isArray(rootCategories)) {
+            rootCategories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat._id;
+                option.textContent = cat.name;
+                if (cat._id === selectedParentId) option.selected = true;
+                select.appendChild(option);
+            });
+        }
     }
 
-    function readExcelFile(file) {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                if (jsonData.length === 0) return alert('File Excel rỗng.');
-                alert(`Chuẩn bị import ${jsonData.length} sản phẩm.`);
-                const response = await sendData('/api/products/import', 'POST', jsonData);
-                if (response && response.ok) {
-                    const result = await response.json();
-                    alert(result.message);
-                    await renderProductsTable(1);
-                }
-            } catch (error) {
-                alert(`Đã có lỗi xảy ra khi đọc file: ${error.message}`);
-            } finally {
-                if (importExcelInput) importExcelInput.value = '';
-            }
+    // --- Event Listeners ---
+    addCategoryBtn?.addEventListener('click', () => {
+         categoryForm.reset();
+         document.getElementById('category-id').value = '';
+         categoryModalTitle.textContent = "Thêm Danh mục Mới";
+         const parentSelect = document.getElementById('category-parent');
+         parentSelect.disabled = false;
+         populateParentCategoryDropdown();
+         categoryModal.classList.add('show');
+    });
+
+    categoryForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const parentSelect = document.getElementById('category-parent');
+        if (!parentSelect.value) {
+            alert('Vui lòng chọn một danh mục cha.');
+            return;
+        }
+        const id = document.getElementById('category-id').value;
+        const categoryData = {
+            name: document.getElementById('category-display-name').value.trim(),
+            slug: document.getElementById('category-slug').value.trim().toLowerCase(),
+            parent: parentSelect.value
         };
-        reader.readAsArrayBuffer(file);
-    }
+        const response = id ? await sendData(`/api/categories/${id}`, 'PUT', categoryData) : await sendData('/api/categories', 'POST', categoryData);
+        if(response) { await renderCategoriesTable(); categoryModal.classList.remove('show'); loadStats(); }
+    });
     
-    // --- 5. GẮN CÁC SỰ KIỆN ---
-    if (loginBtn) {
-        loginBtn.addEventListener('click', () => {
-            if (passwordInput && passwordInput.value === ADMIN_PASSWORD) {
-                loginSection.classList.add('hidden');
+    categoriesTableBody?.addEventListener('click', async (e) => {
+        const button = e.target.closest('button[data-id]');
+        if(!button) return;
+        const id = button.dataset.id;
+        if (button.classList.contains('delete-btn')) {
+            if (confirm('Bạn chắc chắn muốn xóa danh mục này?')) {
+                const response = await sendData(`/api/categories/${id}`, 'DELETE');
+                if (response) { await renderCategoriesTable(); loadStats(); }
+            }
+        } else if (button.classList.contains('edit-btn')) {
+    const p = await fetchData(`/api/products/${id}`);
+    if (p) {
+        modalTitle.textContent = "Chỉnh sửa sản phẩm";
+        document.getElementById('product-id').value = p._id;
+        document.getElementById('product-ma-hang').value = p.ma_hang;
+        document.getElementById('product-ten-hang').value = p.ten_hang;
+        document.getElementById('product-thuong-hieu').value = p.thuong_hieu;
+        document.getElementById('product-gia-ban').value = p.gia_ban;
+        document.getElementById('product-ton-kho').value = p.ton_kho;
+        document.getElementById('product-hinh-anh').value = p.hinh_anh;
+        await populateProductCategoryDropdown(p.danh_muc); // SỬA Ở ĐÂY
+        initializeTinyMCE(p.mo_ta_chi_tiet || '');
+        productModal.classList.add('show');
+    }
+}
+
+    });
+    
+    addProductBtn?.addEventListener('click', () => {
+        productForm.reset();
+        document.getElementById('product-id').value = '';
+        modalTitle.textContent = "Thêm sản phẩm mới";
+        initializeTinyMCE('');
+        populateProductCategoryDropdown();
+        productModal.classList.add('show');
+    });
+
+    closeProductModalBtn?.addEventListener('click', () => productModal.classList.remove('show'));
+
+    productForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('product-id').value;
+        const productData = {
+            ma_hang: document.getElementById('product-ma-hang').value,
+            ten_hang: document.getElementById('product-ten-hang').value,
+            thuong_hieu: document.getElementById('product-thuong-hieu').value,
+            danh_muc: document.getElementById('product-danh-muc').value,
+            gia_ban: parseFloat(document.getElementById('product-gia-ban').value),
+            ton_kho: parseInt(document.getElementById('product-ton-kho').value, 10),
+            hinh_anh: document.getElementById('product-hinh-anh').value,
+            mo_ta_chi_tiet: tinymce.get('product-mo-ta')?.getContent() || '',
+        };
+        const response = id ? await sendData(`/api/products/${id}`, 'PUT', productData) : await sendData('/api/products', 'POST', productData);
+        if (response) {
+            await renderProductsTable(id ? currentProductPage : 1);
+            productModal.classList.remove('show');
+            loadStats();
+        }
+    });
+
+    productsTableBody?.addEventListener('click', async (e) => {
+        const button = e.target.closest('button[data-id]');
+        if (!button) return;
+        const id = button.dataset.id;
+        
+        if (button.classList.contains('delete-btn')) {
+            if (confirm('Bạn có chắc chắn muốn xóa?')) {
+                if (await sendData(`/api/products/${id}`, 'DELETE')) {
+                    await renderProductsTable(currentProductPage);
+                    loadStats();
+                }
+            }
+        } else if (button.classList.contains('edit-btn')) {
+            const p = await fetchData(`/api/products/${id}`);
+            if (p) {
+                modalTitle.textContent = "Chỉnh sửa sản phẩm";
+                document.getElementById('product-id').value = p._id;
+                document.getElementById('product-ma-hang').value = p.ma_hang;
+                document.getElementById('product-ten-hang').value = p.ten_hang;
+                document.getElementById('product-thuong-hieu').value = p.thuong_hieu;
+                document.getElementById('product-gia-ban').value = p.gia_ban;
+                document.getElementById('product-ton-kho').value = p.ton_kho;
+                document.getElementById('product-hinh-anh').value = p.hinh_anh;
+                await populateProductCategoryDropdown(p.danh_muc);
+
+                initializeTinyMCE(p.mo_ta_chi_tiet || '');
+                productModal.classList.add('show');
+            }
+        }
+    });
+    
+    categoryDisplayNameInput?.addEventListener('input', () => {
+        if (!document.getElementById('category-id').value) {
+             categorySlugInput.value = generateSlug(categoryDisplayNameInput.value);
+        }
+    });
+
+    // --- Initial Load ---
+    function init() {
+        loginBtn?.addEventListener('click', () => {
+            if (passwordInput?.value === ADMIN_PASSWORD) {
+                loginSection.style.display = 'none';
                 dashboardSection.classList.remove('hidden');
-                switchTab('products');
+                setupDashboardUI();
+                loadStats();
                 renderProductsTable(1);
                 renderCategoriesTable();
             } else {
                 alert('Mật khẩu không chính xác!');
             }
         });
-    }
-    
-    if (passwordInput) {
-        passwordInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter' && loginBtn) loginBtn.click();
+        passwordInput?.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') loginBtn.click();
         });
     }
 
-    if(adminTabs) {
-        adminTabs.addEventListener('click', (e) => {
-            const tabButton = e.target.closest('.tab-btn');
-            if (tabButton && tabButton.dataset.tab) switchTab(tabButton.dataset.tab);
-        });
-    }
-
-    if (addProductBtn) {
-        addProductBtn.addEventListener('click', () => {
-            console.log("[DEBUG] 'Add Product' button clicked");
-            productForm.reset();
-            document.getElementById('product-id').value = '';
-            modalTitle.textContent = "Thêm sản phẩm mới";
-            initializeTinyMCE('');
-            populateCategoryDropdown();
-            productModal.classList.remove('hidden');
-        });
-    }
-
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => productModal.classList.add('hidden'));
-    }
-
-    if (importExcelBtn) {
-        importExcelBtn.addEventListener('click', () => {
-            console.log("[DEBUG] 'Import Excel' button clicked");
-            if(importExcelInput) importExcelInput.click();
-        });
-    }
-    
-    if (importExcelInput) {
-        importExcelInput.addEventListener('change', (e) => readExcelFile(e.target.files[0]));
-    }
-    
-    if (downloadTemplateBtn) {
-        downloadTemplateBtn.addEventListener('click', exportSampleExcel);
-    }
-    
-    if (productForm) {
-        productForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('product-id').value;
-            const moTaChiTiet = tinymce.get('product-mo-ta') ? tinymce.get('product-mo-ta').getContent() : '';
-            const productData = {
-                ma_hang: document.getElementById('product-ma-hang').value,
-                ten_hang: document.getElementById('product-ten-hang').value,
-                thuong_hieu: document.getElementById('product-thuong-hieu').value,
-                danh_muc: document.getElementById('product-danh-muc').value,
-                gia_ban: parseFloat(document.getElementById('product-gia-ban').value),
-                ton_kho: parseInt(document.getElementById('product-ton-kho').value, 10),
-                hinh_anh: document.getElementById('product-hinh-anh').value,
-                mo_ta_chi_tiet: moTaChiTiet,
-            };
-            const response = id ? await sendData(`/api/products/${id}`, 'PUT', productData) : await sendData('/api/products', 'POST', productData);
-            if (response) {
-                await renderProductsTable(id ? currentProductPage : 1);
-                productModal.classList.add('hidden');
-            }
-        });
-    }
-
-    if (productsTableBody) {
-        productsTableBody.addEventListener('click', async (e) => {
-            const button = e.target.closest('button');
-            if (!button) return;
-            const productId = button.dataset.id;
-            if (button.classList.contains('delete-product-btn')) {
-                if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
-                    const response = await sendData(`/api/products/${productId}`, 'DELETE');
-                    if (response) await renderProductsTable(currentProductPage);
-                }
-            } else if (button.classList.contains('edit-product-btn')) {
-                const productToEdit = await fetchData(`/api/products/${productId}`);
-                if (productToEdit) {
-                    modalTitle.textContent = "Chỉnh sửa sản phẩm";
-                    document.getElementById('product-id').value = productToEdit._id;
-                    document.getElementById('product-ma-hang').value = productToEdit.ma_hang;
-                    document.getElementById('product-ten-hang').value = productToEdit.ten_hang;
-                    document.getElementById('product-thuong-hieu').value = productToEdit.thuong_hieu;
-                    document.getElementById('product-gia-ban').value = productToEdit.gia_ban;
-                    document.getElementById('product-ton-kho').value = productToEdit.ton_kho;
-                    document.getElementById('product-hinh-anh').value = productToEdit.hinh_anh;
-                    await populateCategoryDropdown();
-                    document.getElementById('product-danh-muc').value = productToEdit.danh_muc;
-                    initializeTinyMCE(productToEdit.mo_ta_chi_tiet || '');
-                    productModal.classList.remove('hidden');
-                }
-            }
-        });
-    }
-    
-    if(addCategoryBtn) {
-        addCategoryBtn.addEventListener('click', () => {
-             categoryForm.reset();
-             document.getElementById('category-id').value = '';
-             categoryModalTitle.textContent = "Thêm Danh mục Mới";
-             categoryModal.classList.remove('hidden');
-        });
-    }
-    
-    if(closeCategoryModalBtn) {
-        closeCategoryModalBtn.addEventListener('click', () => categoryModal.classList.add('hidden'));
-    }
-
-    if (categoryForm) {
-        categoryForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('category-id').value;
-            const categoryData = {
-                name: document.getElementById('category-display-name').value.trim(),
-                slug: document.getElementById('category-slug').value.trim().toLowerCase(),
-            };
-            if(!categoryData.name || !categoryData.slug) return alert('Vui lòng điền đầy đủ Tên hiển thị và Slug.');
-            const response = id ? await sendData(`/api/categories/${id}`, 'PUT', categoryData) : await sendData('/api/categories', 'POST', categoryData);
-            if(response) {
-                await renderCategoriesTable();
-                await populateCategoryDropdown();
-                categoryModal.classList.add('hidden');
-            }
-        });
-    }
-    
-    if (categoriesTableBody) {
-        categoriesTableBody.addEventListener('click', async (e) => {
-            const button = e.target.closest('button');
-            if(!button) return;
-            const categoryId = button.dataset.id;
-            if (button.classList.contains('delete-category-btn')) {
-                if (confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
-                    const response = await sendData(`/api/categories/${categoryId}`, 'DELETE');
-                    if (response) {
-                        await renderCategoriesTable();
-                        await populateCategoryDropdown();
-                    }
-                }
-            } else if (button.classList.contains('edit-category-btn')) {
-                categoryForm.reset();
-                categoryModalTitle.textContent = "Chỉnh sửa Danh mục";
-                document.getElementById('category-id').value = categoryId;
-                document.getElementById('category-display-name').value = button.dataset.name;
-                document.getElementById('category-slug').value = button.dataset.slug;
-                categoryModal.classList.remove('hidden');
-            }
-        });
-    }
-    
-    if (categoryDisplayNameInput) {
-        categoryDisplayNameInput.addEventListener('input', () => {
-            const categoryId = document.getElementById('category-id').value;
-            if (!categoryId) {
-                 categorySlugInput.value = generateSlug(categoryDisplayNameInput.value);
-            }
-        });
-    }
-    
-    if (productPaginationControls) {
-        productPaginationControls.addEventListener('click', (e) => {
-            const pageButton = e.target.closest('button[data-page]');
-            if (pageButton) {
-                const page = parseInt(pageButton.dataset.page, 10);
-                if (page !== currentProductPage) renderProductsTable(page);
-            }
-        });
-    }
+    init();
 });
